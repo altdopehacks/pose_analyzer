@@ -77,7 +77,7 @@ def analyze_video(video_path, output_format):
         if results.pose_landmarks:
             for landmark_id, landmark in enumerate(results.pose_landmarks.landmark):
                 current_frame_landmarks.append({
-                    'landmark_id': landmark_id,
+                    'id': landmark_id,
                     'x': landmark.x,
                     'y': landmark.y,
                     'z': landmark.z,
@@ -90,7 +90,7 @@ def analyze_video(video_path, output_format):
     
     return all_frames_data, processed_frames, fps
 
-def save_landmarks_data(all_frames_data, output_format, original_video_path, output_dir_landmarks="output/landmarks_data/"):
+def save_landmarks_data(all_frames_data, output_format, original_video_path, fps=30, output_dir_landmarks="output/landmarks_data/"):
     """
     Saves the extracted pose landmark data to a file (JSON or CSV).
 
@@ -116,7 +116,18 @@ def save_landmarks_data(all_frames_data, output_format, original_video_path, out
     
     if output_format == "json":
         with open(output_file_path, 'w') as f:
-            json.dump(all_frames_data, f, indent=4)
+            # Convert to the format expected by avatar_controller with fps and frames array
+            formatted_data = {
+                "fps": fps,
+                "frames": [
+                    {
+                        "timestamp": frame_idx / fps if fps > 0 else 0,
+                        "poseLandmarks": frame_landmarks
+                    }
+                    for frame_idx, frame_landmarks in enumerate(all_frames_data)
+                ]
+            }
+            json.dump(formatted_data, f, indent=4)
     elif output_format == "csv":
         with open(output_file_path, 'w', newline='') as f:
             csv_writer = csv.writer(f)
@@ -222,7 +233,7 @@ def process_video_and_update_ui(video_file_obj, output_format_choice):
              # Warning: Could not process frames from the video. It might be empty or too short.
 
         # Step 2: Save landmarks data
-        landmarks_file_path = save_landmarks_data(all_frames_data, output_format_choice, video_path)
+        landmarks_file_path = save_landmarks_data(all_frames_data, output_format_choice, video_path, fps)
         
         # Step 3: Save visualized video
         visualized_video_path = save_visualized_video(processed_frames, video_path, fps)
